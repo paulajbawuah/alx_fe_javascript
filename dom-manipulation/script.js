@@ -60,7 +60,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // REQUIRED FUNCTION: syncQuotes
     async function syncQuotes() {
         elements.syncStatus.textContent = 'Syncing...';
         
@@ -77,7 +76,9 @@ document.addEventListener('DOMContentLoaded', function() {
             elements.syncStatus.textContent = `Last synced: ${lastSyncTime.toLocaleTimeString()}`;
             
             if (serverQuotes.length > 0) {
-                showNotification(`${serverQuotes.length} updates received`);
+                showNotification(`${serverQuotes.length} updates received from server`);
+            } else {
+                showNotification("Quotes synced with server!"); // Added required message
             }
             return true;
         } catch (error) {
