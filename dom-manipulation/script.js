@@ -409,6 +409,7 @@ document.addEventListener('DOMContentLoaded', function() {
             newQuoteCategory.value = '';
         });
         categoryFilter.addEventListener('change', handleCategoryFilter);
+        manualSyncBtn.addEventListener('click', syncWithServer);
     }
 
     // Initialize the app
