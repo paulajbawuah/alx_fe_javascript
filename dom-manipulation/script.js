@@ -17,6 +17,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const newQuoteCategory = document.getElementById('new-quote-category');
     const categoryFilter = document.getElementById('category-filter');
 
+
+        function quoteDisplay(quoteObj) {
+        quoteText.textContent = quoteObj.text;
+        quoteAuthor.textContent = quoteObj.author ? `- ${quoteObj.author}` : "";
+        quoteCategory.textContent = quoteObj.category ? `Category: ${quoteObj.category}` : "";
+        
+        // Store last viewed quote in session storage
+        sessionStorage.setItem('lastViewedQuote', JSON.stringify(quoteObj));
+        updateLastViewedInfo();
+        }
     // Load quotes from local storage or initialize with defaults
     function loadQuotes() {
         const storedQuotes = localStorage.getItem('quotes');
@@ -108,6 +118,15 @@ document.addEventListener('DOMContentLoaded', function() {
         displayRandomQuote();
     }
 
+      // Update the last viewed quote info
+    function updateLastViewedInfo() {
+        const lastQuote = sessionStorage.getItem('lastViewedQuote');
+        if (lastQuote) {
+            const quoteObj = JSON.parse(lastQuote);
+            lastViewedInfo.textContent = `Last viewed: "${quoteObj.text}" by ${quoteObj.author || 'Unknown'}`;
+        }
+    }
+    
     // Add new quote
     function addNewQuote() {
         const text = newQuoteText.value.trim();
