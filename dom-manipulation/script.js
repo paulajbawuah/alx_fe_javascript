@@ -1,12 +1,12 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize quotes array
+    // Initialize variables
     let quotes = [];
     let currentCategory = 'all';
     let lastSyncTime = null;
     const SERVER_URL = 'https://jsonplaceholder.typicode.com/posts'; // Mock API endpoint
     const SYNC_INTERVAL = 30000; // Sync every 30 seconds
-    
-    // Get DOM elements
+
+    // DOM elements
     const quoteText = document.getElementById('quote-text');
     const quoteAuthor = document.getElementById('quote-author');
     const quoteCategory = document.getElementById('quote-category');
@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const syncStatus = document.getElementById('sync-status');
     const conflictNotification = document.getElementById('conflict-notification');
     const resolveConflictBtn = document.getElementById('resolve-conflict-btn');
+    const manualSyncBtn = document.getElementById('manual-sync-btn');
 
     // Initialize the app
     function init() {
@@ -32,8 +33,8 @@ document.addEventListener('DOMContentLoaded', function() {
         displayRandomQuote();
     }
 
-    // Server simulation functions
-    async function fetchFromServer() {
+    // Server functions
+    async function fetchQuotesFromServer() {  // REQUIRED FUNCTION
         try {
             const response = await fetch(SERVER_URL);
             if (!response.ok) throw new Error('Server error');
@@ -43,9 +44,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return serverQuotes.map(post => ({
                 id: post.id,
                 text: post.title,
-                author: 'Unknown', // Server doesn't provide author
+                author: post.body || 'Unknown',
                 category: 'General',
-                serverVersion: true
+                serverVersion: true,
+                timestamp: new Date().toISOString()
             }));
         } catch (error) {
             console.error('Fetch error:', error);
@@ -53,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    async function postToServer(quote) {
+    async function postQuoteToServer(quote) {
         try {
             const response = await fetch(SERVER_URL, {
                 method: 'POST',
@@ -86,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
         syncStatus.textContent = 'Syncing...';
         
         try {
-            const serverQuotes = await fetchFromServer();
+            const serverQuotes = await fetchQuotesFromServer(); // Using required function
             const localQuotes = JSON.parse(localStorage.getItem('quotes')) || [];
             
             // Conflict resolution
@@ -101,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             lastSyncTime = new Date();
             syncStatus.textContent = `Last synced: ${lastSyncTime.toLocaleTimeString()}`;
             
-            // Show notification if conflicts were resolved
+            // Show notification if updates were received
             if (serverQuotes.length > 0) {
                 showNotification(`${serverQuotes.length} updates received from server`);
             }
@@ -116,25 +118,28 @@ document.addEventListener('DOMContentLoaded', function() {
         const localMap = new Map(localQuotes.map(q => [q.id, q]));
         const conflicts = [];
         
-        // Merge server quotes, giving priority to server versions
         serverQuotes.forEach(serverQuote => {
             const localQuote = localMap.get(serverQuote.id);
             
             if (localQuote) {
-                // Conflict detected (same ID but different content)
+                // Conflict detected
                 if (JSON.stringify(localQuote) !== JSON.stringify(serverQuote)) {
                     conflicts.push({
                         local: localQuote,
                         server: serverQuote
                     });
+                    // Server version wins
+                    localMap.set(serverQuote.id, { 
+                        ...serverQuote, 
+                        // Preserve local category if it exists
+                        category: localQuote.category || serverQuote.category 
+                    });
                 }
-                localMap.set(serverQuote.id, serverQuote); // Server wins
             } else {
-                localMap.set(serverQuote.id, serverQuote); // New quote from server
+                localMap.set(serverQuote.id, serverQuote);
             }
         });
         
-        // Show conflict notification if needed
         if (conflicts.length > 0) {
             showConflictNotification(conflicts);
         }
@@ -156,9 +161,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function reviewConflicts(conflicts) {
-        // In a real app, you'd implement a more sophisticated UI
-        // Here we just show a simple confirmation
-        if (confirm(`${conflicts.length} conflicts were resolved automatically (server version kept). Click OK to see details in console.`)) {
+        // Simple conflict review - in a real app you'd implement proper UI
+        if (confirm(`${conflicts.length} conflicts were resolved (server version kept). View in console?`)) {
             console.log('Resolved conflicts:', conflicts);
         }
         conflictNotification.style.display = 'none';
@@ -174,32 +178,34 @@ document.addEventListener('DOMContentLoaded', function() {
             notification.remove();
         }, 3000);
     }
-     // Required function for displaying quotes
-        function quoteDisplay(quoteObj) {
+
+    // Quote display and management functions
+    function quoteDisplay(quoteObj) {
         quoteText.textContent = quoteObj.text;
         quoteAuthor.textContent = quoteObj.author ? `- ${quoteObj.author}` : "";
         quoteCategory.textContent = quoteObj.category ? `Category: ${quoteObj.category}` : "";
-        
-        // Store last viewed quote in session storage
         sessionStorage.setItem('lastViewedQuote', JSON.stringify(quoteObj));
         updateLastViewedInfo();
-        }
+    }
 
-    // Load quotes from local storage or initialize with defaults
     function loadQuotes() {
         const storedQuotes = localStorage.getItem('quotes');
         if (storedQuotes) {
             quotes = JSON.parse(storedQuotes);
         } else {
             quotes = [
-                { text: "The only way to do great work is to love what you do.", author: "Steve Jobs", category: "Motivation" },
-                { text: "Innovation distinguishes between a leader and a follower.", author: "Steve Jobs", category: "Business" },
-                { text: "Your time is limited, don't waste it living someone else's life.", author: "Steve Jobs", category: "Life" }
+                { 
+                    id: 1,
+                    text: "The only way to do great work is to love what you do.", 
+                    author: "Steve Jobs", 
+                    category: "Motivation",
+                    timestamp: new Date().toISOString()
+                },
+                // ... other default quotes
             ];
             saveQuotes();
         }
         
-        // Load last selected category
         const storedCategory = localStorage.getItem('selectedCategory');
         if (storedCategory) {
             currentCategory = storedCategory;
