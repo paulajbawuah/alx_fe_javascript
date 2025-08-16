@@ -60,6 +60,33 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // REQUIRED FUNCTION: syncQuotes
+    async function syncQuotes() {
+        elements.syncStatus.textContent = 'Syncing...';
+        
+        try {
+            const serverQuotes = await fetchQuotesFromServer();
+            const localQuotes = JSON.parse(localStorage.getItem('quotes')) || [];
+            const mergedQuotes = resolveConflicts(localQuotes, serverQuotes);
+            
+            localStorage.setItem('quotes', JSON.stringify(mergedQuotes));
+            quotes = mergedQuotes;
+            
+            populateCategories();
+            lastSyncTime = new Date();
+            elements.syncStatus.textContent = `Last synced: ${lastSyncTime.toLocaleTimeString()}`;
+            
+            if (serverQuotes.length > 0) {
+                showNotification(`${serverQuotes.length} updates received`);
+            }
+            return true;
+        } catch (error) {
+            console.error('Sync failed:', error);
+            elements.syncStatus.textContent = 'Sync failed';
+            return false;
+        }
+    }
+
     async function postQuoteToServer(quote) {
         try {
             const response = await fetch(SERVER_URL, {
@@ -82,32 +109,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Sync functions
     function setupSync() {
-        syncWithServer();
-        setInterval(syncWithServer, SYNC_INTERVAL);
-    }
-
-    async function syncWithServer() {
-        elements.syncStatus.textContent = 'Syncing...';
-        
-        try {
-            const serverQuotes = await fetchQuotesFromServer();
-            const localQuotes = JSON.parse(localStorage.getItem('quotes')) || [];
-            const mergedQuotes = resolveConflicts(localQuotes, serverQuotes);
-            
-            localStorage.setItem('quotes', JSON.stringify(mergedQuotes));
-            quotes = mergedQuotes;
-            
-            populateCategories();
-            lastSyncTime = new Date();
-            elements.syncStatus.textContent = `Last synced: ${lastSyncTime.toLocaleTimeString()}`;
-            
-            if (serverQuotes.length > 0) {
-                showNotification(`${serverQuotes.length} updates received`);
-            }
-        } catch (error) {
-            console.error('Sync failed:', error);
-            elements.syncStatus.textContent = 'Sync failed';
-        }
+        syncQuotes(); // Initial sync
+        setInterval(syncQuotes, SYNC_INTERVAL); // Periodic sync
     }
 
     // Conflict resolution
@@ -374,7 +377,7 @@ document.addEventListener('DOMContentLoaded', function() {
             elements.newQuoteCategory.value = '';
         });
         elements.categoryFilter.addEventListener('change', handleCategoryFilter);
-        elements.manualSyncBtn.addEventListener('click', syncWithServer);
+        elements.manualSyncBtn.addEventListener('click', syncQuotes);
     }
 
     // Initialize
